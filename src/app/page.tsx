@@ -352,31 +352,40 @@ export default function KanbanPage() {
               );
             })}
           </div>
-          <p className={`${getFontSizeClass('text-lg')} font-bold ${pageColors.headerSubtitle} mt-1 hidden sm:block ml-4 text-center w-full`}>
+          <p className={`${getFontSizeClass('text-lg')} font-bold ${pageColors.headerSubtitle} hidden sm:block ml-4 text-center w-full`}>
             {projects.length} projects
           </p>
         </div>
         <div className="flex items-center gap-4 ml-auto">
-          {/* Text Size Slider */}
+          {/* Text Size Buttons */}
           <div className="flex items-center gap-2">
-            <label htmlFor="font-size-slider" className={getFontSizeClass('text-sm') + ' font-bold'}>SM</label>
-            <input
-              id="font-size-slider"
-              type="range"
-              min={0}
-              max={3}
-              value={fontSizeLevel}
-              onChange={e => setFontSizeLevel(Number(e.target.value))}
-              className={`w-16 sm:w-32 ${pageColors.sliderAccent}`}
-              style={{ accentColor: pageColors.sliderAccent }}
-            />
-            <span className={getFontSizeClass('text-xs')}>{['XS', 'SM', 'MD', 'LG'][fontSizeLevel]}</span>
+            <button
+              onClick={() => setFontSizeLevel(prev => Math.max(0, prev - 1))}
+              disabled={fontSizeLevel === 0}
+              className="w-6 h-6 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Decrease text size"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <span className={getFontSizeClass('text-xs') + ' font-bold min-w-[2rem] text-center'}>{['XS', 'SM', 'MD', 'LG'][fontSizeLevel]}</span>
+            <button
+              onClick={() => setFontSizeLevel(prev => Math.min(3, prev + 1))}
+              disabled={fontSizeLevel === 3}
+              className="w-6 h-6 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Increase text size"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className={`text-lg font-bold ${buttonColors.primary} py-2 px-5 rounded-lg transition-colors flex items-center gap-2`}
+            className="text-lg font-bold bg-pink-500/50 hover:bg-pink-500/75 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
