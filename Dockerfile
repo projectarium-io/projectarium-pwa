@@ -12,11 +12,13 @@ RUN npm ci
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+
+# Accept build arguments
+ARG NEXT_PUBLIC_API_URL=http://localhost:8888/api
 
 # Set environment variable for build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Build the Next.js app
 RUN npm run build
