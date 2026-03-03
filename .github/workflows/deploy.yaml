@@ -40,6 +40,8 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ env.ECR_REPO }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://18.210.101.173:8888/api
 
       - name: 🏗️ Copy files to EC2
         uses: appleboy/scp-action@v0.1.7
