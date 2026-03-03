@@ -1,0 +1,76 @@
+name: 🔧 One-Time Setup
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  EC2_HOST:   ec2-18-210-101-173.compute-1.amazonaws.com
+  EC2_USER:   ubuntu
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🏗️ Create OIDC provider and IAM role
+        run: |
+          # Create OIDC provider
+          aws iam create-open-id-connect-provider \
+            --url https://token.actions.githubusercontent.com \
+            --client-id-list sts.amazonaws.com || echo "OIDC provider already exists"
+
+          # Create IAM role
+          aws iam create-role --role-name GitHub-ECR-Deploy-PWA \
+            --assume-role-policy-document '{
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "arn:aws:iam::083365649555:oidc-provider/token.actions.githubusercontent.com"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"}, "StringLike": {"token.actions.githubusercontent.com:sub": "repo:sean-obeirne/projectarium-pwa:*"}}
+              }]
+            }' || echo "Role already exists"
+
+          # Attach ECR policy
+          aws iam attach-role-policy \
+            --role-name GitHub-ECR-Deploy-PWA \
+            --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess || echo "Policy already attached"
+
+      - name: 🖥️ Setup EC2 instance
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USER }}
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo adduser --disabled-password --gecos '' projectarium || echo 'User already exists'
+            sudo usermod -aG docker projectarium
+
+            # Copy SSH key to projectarium user
+            sudo mkdir -p /home/projectarium/.ssh
+            sudo cp ~/.ssh/authorized_keys /home/projectarium/.ssh/
+            sudo chown -R projectarium:projectarium /home/projectarium/.ssh
+
+            # Install AWS CLI if not present
+            if ! command -v aws &> /dev/null; then
+              sudo apt update && sudo apt install -y unzip
+              curl -s 'https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip' -o awscliv2.zip
+              unzip -q awscliv2.zip && sudo ./aws/install && rm -rf aws awscliv2.zip
+            fi
+
+            # Create PWA directory
+            sudo mkdir -p /home/projectarium/pwa
+            sudo chown -R projectarium:projectarium /home/projectarium/pwa
+
+            echo 'EC2 setup complete'

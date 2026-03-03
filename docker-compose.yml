@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   pwa:
-    image: projectarium-pwa:latest
+    image: ${ECR_REPO:-projectarium-pwa}:latest
     container_name: projectarium-pwa
     ports:
       - "3000:3000"
