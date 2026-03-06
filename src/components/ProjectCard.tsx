@@ -43,11 +43,19 @@ export default function ProjectCard({
 
   const touchTimer = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
   const [isDragReady, setIsDragReady] = useState(false);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+
+    // If touch started on the drag handle, skip delay entirely
+    if (dragHandleRef.current?.contains(e.target as Node)) {
+      setIsDragReady(true);
+      if (navigator.vibrate) navigator.vibrate(30);
+      return;
+    }
 
     // Clear any existing timer
     if (touchTimer.current) {
@@ -133,6 +141,24 @@ export default function ProjectCard({
         ${animationDelay !== undefined ? 'animate-card-in' : ''}`}
       style={animationDelay !== undefined ? { animationDelay: `${animationDelay}ms` } : undefined}
     >
+      {/* Drag handle — touch to drag immediately without delay */}
+      <div
+        ref={dragHandleRef}
+        onClick={(e) => e.stopPropagation()}
+        className="absolute right-0 top-0 bottom-0 w-5 sm:hidden flex items-center justify-center
+          opacity-25 cursor-grab active:cursor-grabbing touch-none select-none rounded-r-lg"
+        title="Drag handle"
+      >
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" className="text-gray-400">
+          <circle cx="2" cy="2" r="1.3"/>
+          <circle cx="6" cy="2" r="1.3"/>
+          <circle cx="2" cy="7" r="1.3"/>
+          <circle cx="6" cy="7" r="1.3"/>
+          <circle cx="2" cy="12" r="1.3"/>
+          <circle cx="6" cy="12" r="1.3"/>
+        </svg>
+      </div>
+
       {/* Card header */}
       <div className="mb-1.5">
         <h3 className={`font-semibold ${getFontSizeClass('text-sm')} text-gray-900 dark:text-white leading-snug group-hover:text-pink-500 dark:group-hover:text-pink-400 transition-colors overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent`}>
