@@ -112,6 +112,18 @@ export default function KanbanPage() {
     loadData();
   }, []);
 
+  // Close modals on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (editingProject) setEditingProject(null);
+      else if (showCreateModal) setShowCreateModal(false);
+      else if (selectedProject) setSelectedProject(null);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [editingProject, showCreateModal, selectedProject]);
+
   // ── Drag and Drop ──
 
   const handleDragStart = (projectId: number) => {
@@ -626,13 +638,13 @@ export default function KanbanPage() {
 
       {/* Create Project Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && setShowCreateModal(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className={typeof getFontSizeClass === 'function' ? getFontSizeClass('text-xl') + " font-bold text-gray-900 dark:text-white" : "text-xl font-bold text-gray-900 dark:text-white"}>New Project</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-black rounded-lg shadow-2xl shadow-pink-700/40 w-full max-w-lg border border-pink-300">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-pink-600">
+              <h2 className={getFontSizeClass('text-lg') + " font-semibold tracking-widest uppercase text-pink-300"}>New Project</h2>
+              <button onClick={() => setShowCreateModal(false)} className="text-gray-600 hover:text-pink-300 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -651,13 +663,13 @@ export default function KanbanPage() {
 
       {/* Edit Project Modal */}
       {editingProject && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && setEditingProject(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className={getFontSizeClass('text-xl') + " font-bold text-gray-900 dark:text-white"}>Edit Project</h2>
-              <button onClick={() => setEditingProject(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-black rounded-lg shadow-2xl shadow-pink-700/40 w-full max-w-lg border border-pink-300">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-pink-600">
+              <h2 className={getFontSizeClass('text-lg') + " font-semibold tracking-widest uppercase text-pink-300"}>Edit Project</h2>
+              <button onClick={() => setEditingProject(null)} className="text-gray-600 hover:text-pink-300 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
