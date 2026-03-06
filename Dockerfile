@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 node:20-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 
 # Production image, copy all the files and run next
-FROM --platform=linux/arm64 base AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
