@@ -179,13 +179,3 @@ body {
 .animate-card-hold {
   animation: card-hold-charge linear forwards;
 }
-
-/* Show only on devices that have any touch capability (any-pointer covers Chromebooks with trackpad+touch) */
-.touch-only {
-  display: none;
-}
-@media (any-pointer: coarse) {
-  .touch-only {
-    display: flex;
-  }
-}

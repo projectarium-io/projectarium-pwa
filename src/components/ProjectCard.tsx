@@ -48,6 +48,7 @@ export default function ProjectCard({
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const [isHolding, setIsHolding] = useState(false);
+  const hasTouchScreen = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
   const startTouchDrag = (clientX: number, clientY: number) => {
     setIsHolding(false);
@@ -145,23 +146,25 @@ export default function ProjectCard({
         ...(animationDelay !== undefined && !isHolding ? { animationDelay: `${animationDelay}ms` } : {}),
       }}
     >
-      {/* Drag handle — touch to drag immediately without delay */}
-      <div
-        ref={dragHandleRef}
-        onClick={(e) => e.stopPropagation()}
-        className="absolute right-0 top-0 bottom-0 w-5 touch-only items-center justify-center
-          opacity-25 cursor-grab active:cursor-grabbing touch-none select-none rounded-r-lg"
-        title="Drag handle"
-      >
-        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" className="text-gray-400">
-          <circle cx="2" cy="2" r="1.3" />
-          <circle cx="6" cy="2" r="1.3" />
-          <circle cx="2" cy="7" r="1.3" />
-          <circle cx="6" cy="7" r="1.3" />
-          <circle cx="2" cy="12" r="1.3" />
-          <circle cx="6" cy="12" r="1.3" />
-        </svg>
-      </div>
+      {/* Drag handle — shown on any device with a touchscreen */}
+      {hasTouchScreen && (
+        <div
+          ref={dragHandleRef}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-0 bottom-0 w-5 flex items-center justify-center
+            opacity-25 cursor-grab active:cursor-grabbing touch-none select-none rounded-r-lg"
+          title="Drag handle"
+        >
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" className="text-gray-400">
+            <circle cx="2" cy="2" r="1.3" />
+            <circle cx="6" cy="2" r="1.3" />
+            <circle cx="2" cy="7" r="1.3" />
+            <circle cx="6" cy="7" r="1.3" />
+            <circle cx="2" cy="12" r="1.3" />
+            <circle cx="6" cy="12" r="1.3" />
+          </svg>
+        </div>
+      )}
 
       {/* Card header */}
       <div className="mb-1.5">
