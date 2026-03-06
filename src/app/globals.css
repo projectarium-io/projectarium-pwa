@@ -179,3 +179,13 @@ body {
 .animate-card-hold {
   animation: card-hold-charge linear forwards;
 }
+
+/* Show only on touchscreen devices (any screen size) */
+.touch-only {
+  display: none;
+}
+@media (pointer: coarse) {
+  .touch-only {
+    display: flex;
+  }
+}

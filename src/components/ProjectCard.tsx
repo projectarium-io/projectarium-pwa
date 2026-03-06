@@ -36,7 +36,7 @@ export default function ProjectCard({
   onEdit,
   fontSizeLevel,
   getFontSizeClass,
-  touchDragDelay = 700, // 700ms hold to drag on non-handle touch
+  touchDragDelay = 400, // 700ms hold to drag on non-handle touch
   animationDelay,
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
@@ -149,7 +149,7 @@ export default function ProjectCard({
       <div
         ref={dragHandleRef}
         onClick={(e) => e.stopPropagation()}
-        className="absolute right-0 top-0 bottom-0 w-5 sm:hidden flex items-center justify-center
+        className="absolute right-0 top-0 bottom-0 w-5 touch-only items-center justify-center
           opacity-25 cursor-grab active:cursor-grabbing touch-none select-none rounded-r-lg"
         title="Drag handle"
       >
