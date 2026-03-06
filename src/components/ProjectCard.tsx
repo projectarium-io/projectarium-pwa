@@ -16,6 +16,7 @@ interface ProjectCardProps {
   fontSizeLevel: number;
   getFontSizeClass: (baseClass: string) => string;
   touchDragDelay?: number; // Delay in ms before drag starts on touch devices (default: 200)
+  animationDelay?: number; // Stagger delay in ms for entrance animation (undefined = no animation)
 }
 
 export default function ProjectCard({
@@ -32,6 +33,7 @@ export default function ProjectCard({
   fontSizeLevel,
   getFontSizeClass,
   touchDragDelay = 100, // Default 200ms delay for mobile
+  animationDelay,
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
   const langClass = languageColors[langKey] || defaultLanguageColor;
@@ -124,7 +126,9 @@ export default function ProjectCard({
         transition-all duration-150 select-none
         ${isDragging ? dragColors.draggingCard : ''}
         ${isDragReady ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}
-        ${isFocused ? 'ring-2 ring-pink-400 border-pink-400' : ''}`}
+        ${isFocused ? 'ring-2 ring-pink-400 border-pink-400' : ''}
+        ${animationDelay !== undefined ? 'animate-card-in' : ''}`}
+      style={animationDelay !== undefined ? { animationDelay: `${animationDelay}ms` } : undefined}
     >
       {/* Card header */}
       <div className="mb-1.5">

@@ -18,12 +18,16 @@ import {
 import ProjectCard from '@/components/ProjectCard';
 import ProjectModal from '@/components/ProjectModal';
 import ProjectForm from '@/components/ProjectForm';
+import { useToast } from '@/components/Toast';
 
 export default function KanbanPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [todos, setTodos] = useState<Record<number, Todo[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast, success, error: toastError } = useToast();
+  const hasAnimated = useRef(false);
+  const [animating, setAnimating] = useState(false);
   // Font size slider (4 levels)
   const fontSizeLevels = ['text-xs', 'text-sm', 'text-base', 'text-lg'];
   const [fontSizeLevel, setFontSizeLevel] = useState(2); // Default: base
@@ -54,6 +58,12 @@ export default function KanbanPage() {
   const [focusCol, setFocusCol] = useState(0);
   const [focusIdx, setFocusIdx] = useState(0);
   const boardRef = useRef<HTMLDivElement>(null);
+
+  // ── Focus mode: expand a single column ──
+  const [focusedColumn, setFocusedColumn] = useState<KanbanStatus | null>(null);
+  const toggleFocusColumn = (key: KanbanStatus) => {
+    setFocusedColumn(prev => prev === key ? null : key);
+  };
 
   // View mode: 'vertical' (kanban columns) or 'horizontal' (project rows) (persisted to localStorage)
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>(() => {
@@ -111,6 +121,12 @@ export default function KanbanPage() {
       setError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
       setLoading(false);
+      // Trigger entrance animations on first load only
+      if (!hasAnimated.current) {
+        hasAnimated.current = true;
+        setAnimating(true);
+        setTimeout(() => setAnimating(false), 2000); // Clear after all animations finish
+      }
     }
   };
 
@@ -145,6 +161,7 @@ export default function KanbanPage() {
         if (editingProject) { setEditingProject(null); return; }
         if (showCreateModal) { setShowCreateModal(false); return; }
         if (selectedProject) { setSelectedProject(null); return; }
+        if (focusedColumn) { setFocusedColumn(null); return; }
         if (kbMode) { setKbMode(false); return; }
         return;
       }
@@ -224,7 +241,7 @@ export default function KanbanPage() {
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [kbMode, focusCol, focusIdx, editingProject, showCreateModal, selectedProject, projects, getVisibleCols]);
+  }, [kbMode, focusCol, focusIdx, editingProject, showCreateModal, selectedProject, focusedColumn, projects, getVisibleCols]);
 
   // Auto-scroll focused card into view
   useEffect(() => {
@@ -312,14 +329,38 @@ export default function KanbanPage() {
   // ── Project CRUD ──
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this project and all its todos?')) return;
-    try {
-      await deleteProject(id);
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      setSelectedProject(null);
-    } catch {
-      alert('Failed to delete project');
-    }
+    const project = projects.find(p => p.id === id);
+    if (!project) return;
+
+    // Optimistic removal
+    const prevProjects = projects;
+    const prevTodos = { ...todos };
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setSelectedProject(null);
+
+    let undone = false;
+    toast(`Deleted "${project.name}"`, 'warning', {
+      duration: 5000,
+      onUndo: () => {
+        undone = true;
+        setProjects(prevProjects);
+        setTodos(prevTodos);
+        success('Restored!');
+      },
+    });
+
+    // Wait briefly then persist (gives undo window)
+    setTimeout(async () => {
+      if (undone) return;
+      try {
+        await deleteProject(id);
+      } catch {
+        // Revert on error
+        setProjects(prevProjects);
+        setTodos(prevTodos);
+        toastError('Failed to delete project');
+      }
+    }, 5200);
   };
 
   const handleCreate = async (data: Partial<Project>) => {
@@ -328,8 +369,9 @@ export default function KanbanPage() {
       setProjects((prev) => [...prev, created]);
       setTodos((prev) => ({ ...prev, [created.id]: [] }));
       setShowCreateModal(false);
+      success(`Created "${created.name}"`);
     } catch (err) {
-      alert('Failed to create project: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toastError('Failed to create project: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -345,8 +387,9 @@ export default function KanbanPage() {
         setSelectedProject(updated);
       }
       setEditingProject(null);
+      success('Project updated');
     } catch (err) {
-      alert('Failed to update project: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toastError('Failed to update project: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -364,7 +407,7 @@ export default function KanbanPage() {
         [projectId]: [...(prev[projectId] || []), created],
       }));
     } catch {
-      alert('Failed to create todo');
+      toastError('Failed to create todo');
     }
   };
 
@@ -381,7 +424,7 @@ export default function KanbanPage() {
         ),
       }));
     } catch {
-      alert('Failed to update todo');
+      toastError('Failed to update todo');
     }
   };
 
@@ -395,7 +438,7 @@ export default function KanbanPage() {
         ),
       }));
     } catch {
-      alert('Failed to delete todo');
+      toastError('Failed to delete todo');
     }
   };
 
@@ -444,8 +487,23 @@ export default function KanbanPage() {
           <span className="text-gray-400">↵ open · E edit · D del · N new · Tab exit</span>
         </div>
       )}
+      {/* Focus mode indicator */}
+      {focusedColumn && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/50 backdrop-blur-sm flex items-center gap-2 text-blue-300 text-xs font-mono tracking-wider select-none">
+          <span>◉ FOCUS</span>
+          <span className="text-gray-500">│</span>
+          <span className="text-gray-400 capitalize">{focusedColumn}</span>
+          <span className="text-gray-500">│</span>
+          <button
+            onClick={() => setFocusedColumn(null)}
+            className="text-gray-400 hover:text-blue-300 transition-colors pointer-events-auto"
+          >
+            Esc to exit
+          </button>
+        </div>
+      )}
       {/* Header */}
-      <div className="flex mb-6 px-4 items-center">
+      <div className={`flex mb-6 px-4 items-center ${animating ? 'animate-header-in' : ''}`}>
         <div className="flex-1 flex items-center">
           {/* View Mode Toggle Button */}
           <button
@@ -548,12 +606,15 @@ export default function KanbanPage() {
       </div>
 
       {/* Kanban Board - Vertical View */}
-      {viewMode === 'vertical' && (
-        <div className={`grid gap-4 px-4 h-[calc(100vh-12rem)] min-h-0`} style={{ gridTemplateColumns: `repeat(${KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).length}, minmax(0, 1fr))` }}>
-          {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).map(({ key, label }) => {
+      {viewMode === 'vertical' && (() => {
+        const filteredCols = KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key] && (!focusedColumn || key === focusedColumn));
+        return (
+        <div className={`grid gap-4 px-4 h-[calc(100vh-12rem)] min-h-0`} style={{ gridTemplateColumns: `repeat(${filteredCols.length}, minmax(0, 1fr))` }}>
+          {filteredCols.map(({ key, label }, colIdx) => {
             const colProjects = getColumnProjects(key);
             const colors = kanbanColors[key];
             const isDropTarget = dragOver?.column === key;
+            const isFocused = focusedColumn === key;
 
             return (
               <div
@@ -561,7 +622,8 @@ export default function KanbanPage() {
                 className={`flex flex-col rounded-xl border-2 transition-all duration-200 ${isDropTarget
                   ? `${colors.dropzone} border-dashed scale-[1.01]`
                   : `${colors.bg} ${colors.border}`
-                  }`}
+                  } ${animating ? 'animate-column-in' : ''} ${isFocused ? 'animate-focus-expand' : ''}`}
+                style={animating ? { animationDelay: `${colIdx * 80}ms` } : undefined}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOver(prev => {
@@ -581,8 +643,15 @@ export default function KanbanPage() {
                 }}
               >
                 {/* Column Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-inherit gap-2">
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-b border-inherit gap-2 cursor-pointer hover:bg-white/5 transition-colors"
+                  onClick={() => toggleFocusColumn(key)}
+                  title={focusedColumn === key ? 'Exit focus mode (Esc)' : `Focus on ${label}`}
+                >
                   <h2 className={`font-semibold ${getFontSizeClass('text-sm')} uppercase tracking-wider ${colors.header} overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent flex-1 min-w-0`}>
+                    {focusedColumn === key && (
+                      <span className="mr-2 text-pink-400" title="Focus mode — click to exit">◉</span>
+                    )}
                     {label}
                   </h2>
                   <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count} shrink-0`}>
@@ -592,7 +661,7 @@ export default function KanbanPage() {
 
                 {/* Cards */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
-                  {colProjects.map((project) => {
+                  {colProjects.map((project, cardIdx) => {
                     const isTarget = dragOver?.column === key && dragOver?.cardId === project.id;
                     const isDragging = draggedId === project.id;
                     return (
@@ -608,6 +677,7 @@ export default function KanbanPage() {
                             isFocused={kbMode && getFocusedProject()?.id === project.id}
                             fontSizeLevel={fontSizeLevel}
                             getFontSizeClass={getFontSizeClass}
+                            animationDelay={animating ? (colIdx * 80) + (cardIdx * 50) + 100 : undefined}
                             onDragStart={() => handleDragStart(project.id)}
                             onDragEnd={handleDragEnd}
                             onDragOver={(e) => handleCardDragOver(e, project.id, key)}
@@ -638,15 +708,17 @@ export default function KanbanPage() {
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       {/* Horizontal View - Project Rows */}
       {viewMode === 'horizontal' && (
         <div className="px-4 overflow-y-auto h-[calc(100vh-12rem)] space-y-4">
-          {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]).map(({ key, label }) => {
+          {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key] && (!focusedColumn || key === focusedColumn)).map(({ key, label }, colIdx) => {
             const colProjects = getColumnProjects(key);
             const colors = kanbanColors[key];
             const isDropTarget = dragOver?.column === key;
+            const isFocused = focusedColumn === key;
             if (colProjects.length === 0 && !isDropTarget) return null;
 
             return (
@@ -655,7 +727,8 @@ export default function KanbanPage() {
                 className={`rounded-xl border-2 p-4 transition-all duration-200 ${isDropTarget
                   ? `${colors.dropzone} border-dashed scale-[1.005]`
                   : `${colors.bg} ${colors.border}`
-                  }`}
+                  } ${animating ? 'animate-column-in' : ''} ${isFocused ? 'animate-focus-expand' : ''}`}
+                style={animating ? { animationDelay: `${colIdx * 100}ms` } : undefined}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragOver(prev => {
@@ -674,8 +747,15 @@ export default function KanbanPage() {
                 }}
               >
                 {/* Row Header */}
-                <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="flex items-center gap-3 mb-3 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => toggleFocusColumn(key)}
+                  title={focusedColumn === key ? 'Exit focus mode (Esc)' : `Focus on ${label}`}
+                >
                   <h2 className={`font-bold ${getFontSizeClass('text-base')} uppercase tracking-wider ${colors.header}`}>
+                    {focusedColumn === key && (
+                      <span className="mr-2 text-pink-400" title="Focus mode — click to exit">◉</span>
+                    )}
                     {label}
                   </h2>
                   <span className={`${getFontSizeClass('text-xs')} font-bold px-2 py-0.5 rounded-full ${colors.count}`}>
@@ -685,7 +765,7 @@ export default function KanbanPage() {
 
                 {/* Cards in a wrapping flex row */}
                 <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {colProjects.map((project) => {
+                  {colProjects.map((project, cardIdx) => {
                     const isTarget = dragOver?.column === key && dragOver?.cardId === project.id;
                     const isDragging = draggedId === project.id;
                     return (
@@ -711,6 +791,7 @@ export default function KanbanPage() {
                             isFocused={kbMode && getFocusedProject()?.id === project.id}
                             fontSizeLevel={fontSizeLevel}
                             getFontSizeClass={getFontSizeClass}
+                            animationDelay={animating ? (colIdx * 100) + (cardIdx * 50) + 120 : undefined}
                             onDragStart={() => handleDragStart(project.id)}
                             onDragEnd={handleDragEnd}
                             onDragOver={(e) => e.preventDefault()}

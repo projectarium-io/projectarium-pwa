@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import Providers from './Providers';
 
 export const metadata: Metadata = {
   title: 'Projectarium - Project & Task Management',
@@ -34,11 +35,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body>
-        <div className="min-h-screen bg-black">
-          <main className="px-4 sm:px-6 py-6">
-            {children}
-          </main>
-        </div>
+        <Providers>
+          <div className="min-h-screen bg-black">
+            <main className="px-4 sm:px-6 py-6">
+              {children}
+            </main>
+          </div>
+        </Providers>
       </body>
     </html>
   );
