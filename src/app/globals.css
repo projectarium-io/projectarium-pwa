@@ -180,11 +180,11 @@ body {
   animation: card-hold-charge linear forwards;
 }
 
-/* Show only on touchscreen devices (any screen size) */
+/* Show only on devices that have any touch capability (any-pointer covers Chromebooks with trackpad+touch) */
 .touch-only {
   display: none;
 }
-@media (pointer: coarse) {
+@media (any-pointer: coarse) {
   .touch-only {
     display: flex;
   }
