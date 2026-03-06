@@ -42,6 +42,34 @@ body {
   }
 }
 
+/* Card container query — extra info at wider sizes */
+.card-container {
+  container-type: inline-size;
+}
+
+/* Hide by default, show when container is wide enough */
+.card-extra {
+  display: none;
+}
+
+@container (min-width: 280px) {
+  .card-extra-path {
+    display: block;
+  }
+}
+
+@container (min-width: 340px) {
+  .card-extra-todos {
+    display: block;
+  }
+}
+
+@container (min-width: 280px) {
+  .card-description-expand {
+    -webkit-line-clamp: 4;
+  }
+}
+
 /* Toast animations */
 @keyframes toast-in {
   from {

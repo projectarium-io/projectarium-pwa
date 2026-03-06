@@ -10,6 +10,8 @@ interface Toast {
     type: ToastType;
     duration: number;
     onUndo?: () => void;
+    onConfirm?: () => void;
+    onCancel?: () => void;
     exiting?: boolean;
 }
 
@@ -19,6 +21,7 @@ interface ToastContextValue {
     error: (message: string) => void;
     info: (message: string) => void;
     warning: (message: string) => void;
+    confirm: (message: string, onConfirm: () => void) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -94,6 +97,25 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: numb
                         Undo
                     </button>
                 )}
+                {t.onConfirm && (
+                    <div className="flex gap-1.5 shrink-0">
+                        <button
+                            onClick={() => { t.onConfirm?.(); onDismiss(t.id); }}
+                            className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded
+                bg-red-500/80 hover:bg-red-500 text-white transition-colors"
+                        >
+                            Yes
+                        </button>
+                        <button
+                            onClick={() => { t.onCancel?.(); onDismiss(t.id); }}
+                            className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded
+                bg-white/10 hover:bg-white/20 transition-colors"
+                        >
+                            No
+                        </button>
+                    </div>
+                )}
+                {!t.onConfirm && (
                 <button
                     onClick={() => onDismiss(t.id)}
                     className="text-current opacity-50 hover:opacity-100 transition-opacity shrink-0 ml-1"
@@ -102,6 +124,7 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: numb
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
+                )}
             </div>
             {/* Progress bar */}
             <div
@@ -144,12 +167,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         timers.current.set(id, timer);
     }, [dismiss]);
 
+    const confirmToast = useCallback((message: string, onConfirm: () => void) => {
+        const id = nextId.current++;
+        const duration = 8000;
+
+        setToasts(prev => [...prev.slice(-4), {
+            id, message, type: 'warning' as ToastType, duration,
+            onConfirm,
+            onCancel: () => { /* just dismiss */ },
+        }]);
+
+        const timer = setTimeout(() => dismiss(id), duration);
+        timers.current.set(id, timer);
+    }, [dismiss]);
+
     const value: ToastContextValue = {
         toast,
         success: useCallback((msg: string) => toast(msg, 'success'), [toast]),
         error: useCallback((msg: string) => toast(msg, 'error'), [toast]),
         info: useCallback((msg: string) => toast(msg, 'info'), [toast]),
         warning: useCallback((msg: string) => toast(msg, 'warning'), [toast]),
+        confirm: confirmToast,
     };
 
     return (

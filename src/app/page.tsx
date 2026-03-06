@@ -25,7 +25,7 @@ export default function KanbanPage() {
   const [todos, setTodos] = useState<Record<number, Todo[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast, success, error: toastError } = useToast();
+  const { toast, success, error: toastError, confirm } = useToast();
   const hasAnimated = useRef(false);
   const [animating, setAnimating] = useState(false);
   // Font size slider (4 levels)
@@ -332,35 +332,16 @@ export default function KanbanPage() {
     const project = projects.find(p => p.id === id);
     if (!project) return;
 
-    // Optimistic removal
-    const prevProjects = projects;
-    const prevTodos = { ...todos };
-    setProjects(prev => prev.filter(p => p.id !== id));
-    setSelectedProject(null);
-
-    let undone = false;
-    toast(`Deleted "${project.name}"`, 'warning', {
-      duration: 5000,
-      onUndo: () => {
-        undone = true;
-        setProjects(prevProjects);
-        setTodos(prevTodos);
-        success('Restored!');
-      },
-    });
-
-    // Wait briefly then persist (gives undo window)
-    setTimeout(async () => {
-      if (undone) return;
+    confirm(`Delete "${project.name}" and all its todos?`, async () => {
       try {
         await deleteProject(id);
+        setProjects(prev => prev.filter(p => p.id !== id));
+        setSelectedProject(null);
+        success(`Deleted "${project.name}"`);
       } catch {
-        // Revert on error
-        setProjects(prevProjects);
-        setTodos(prevTodos);
         toastError('Failed to delete project');
       }
-    }, 5200);
+    });
   };
 
   const handleCreate = async (data: Partial<Project>) => {
