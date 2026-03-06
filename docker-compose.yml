@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   pwa:
+    platform: linux/arm64
     image: ${ECR_REPO:-projectarium-pwa}:latest
     container_name: projectarium-pwa
     ports:
