@@ -11,6 +11,7 @@ interface ProjectCardProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent) => void;
+  onTouchDragStart: (projectId: number, clientX: number, clientY: number, cardRect: DOMRect) => void;
   onClick: () => void;
   onDelete: () => void;
   onEdit: () => void;
@@ -29,6 +30,7 @@ export default function ProjectCard({
   onDragStart,
   onDragEnd,
   onDragOver,
+  onTouchDragStart,
   onClick,
   onDelete,
   onEdit,
@@ -41,51 +43,45 @@ export default function ProjectCard({
   const langClass = languageColors[langKey] || defaultLanguageColor;
   const activeTodos = todos.filter(t => !t.deleted);
 
+  const cardRef = useRef<HTMLDivElement>(null);
   const touchTimer = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
-  const [isDragReady, setIsDragReady] = useState(false);
+
+  const startTouchDrag = (clientX: number, clientY: number) => {
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (rect) {
+      if (navigator.vibrate) navigator.vibrate(40);
+      onTouchDragStart(project.id, clientX, clientY, rect);
+    }
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY };
 
-    // If touch started on the drag handle, skip delay entirely
+    // Drag handle: fire immediately, no delay
     if (dragHandleRef.current?.contains(e.target as Node)) {
-      setIsDragReady(true);
-      if (navigator.vibrate) navigator.vibrate(30);
+      startTouchDrag(touch.clientX, touch.clientY);
       return;
     }
 
-    // Clear any existing timer
-    if (touchTimer.current) {
-      clearTimeout(touchTimer.current);
-    }
-
-    // Start a timer for the drag delay
+    if (touchTimer.current) clearTimeout(touchTimer.current);
     touchTimer.current = setTimeout(() => {
-      setIsDragReady(true);
-      // Optionally add haptic feedback if available
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
+      touchTimer.current = null;
+      startTouchDrag(touch.clientX, touch.clientY);
     }, touchDragDelay);
   };
 
+  // Cancel timer if user scrolls before it fires
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPos.current) return;
-
+    if (!touchTimer.current || !touchStartPos.current) return;
     const touch = e.touches[0];
-    const moveThreshold = 10; // pixels
     const dx = Math.abs(touch.clientX - touchStartPos.current.x);
     const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-
-    // If moved too much before delay completed, cancel drag
-    if ((dx > moveThreshold || dy > moveThreshold) && !isDragReady) {
-      if (touchTimer.current) {
-        clearTimeout(touchTimer.current);
-        touchTimer.current = null;
-      }
+    if (dx > 8 || dy > 8) {
+      clearTimeout(touchTimer.current);
+      touchTimer.current = null;
       touchStartPos.current = null;
     }
   };
@@ -96,11 +92,11 @@ export default function ProjectCard({
       touchTimer.current = null;
     }
     touchStartPos.current = null;
-    setIsDragReady(false);
   };
 
   return (
     <div
+      ref={cardRef}
       draggable
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -136,7 +132,6 @@ export default function ProjectCard({
         hover:-translate-y-0.5
         transition-all duration-150 select-none
         ${isDragging ? dragColors.draggingCard : ''}
-        ${isDragReady ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}
         ${isFocused ? 'ring-2 ring-pink-400 border-pink-400' : ''}
         ${animationDelay !== undefined ? 'animate-card-in' : ''}`}
       style={animationDelay !== undefined ? { animationDelay: `${animationDelay}ms` } : undefined}
@@ -150,12 +145,12 @@ export default function ProjectCard({
         title="Drag handle"
       >
         <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" className="text-gray-400">
-          <circle cx="2" cy="2" r="1.3"/>
-          <circle cx="6" cy="2" r="1.3"/>
-          <circle cx="2" cy="7" r="1.3"/>
-          <circle cx="6" cy="7" r="1.3"/>
-          <circle cx="2" cy="12" r="1.3"/>
-          <circle cx="6" cy="12" r="1.3"/>
+          <circle cx="2" cy="2" r="1.3" />
+          <circle cx="6" cy="2" r="1.3" />
+          <circle cx="2" cy="7" r="1.3" />
+          <circle cx="6" cy="7" r="1.3" />
+          <circle cx="2" cy="12" r="1.3" />
+          <circle cx="6" cy="12" r="1.3" />
         </svg>
       </div>
 
