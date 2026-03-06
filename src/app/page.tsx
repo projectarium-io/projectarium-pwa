@@ -47,6 +47,15 @@ export default function KanbanPage() {
     position: 'before' | 'after';
   } | null>(null);
 
+  // Touch drag state
+  const touchDragRef = useRef<{
+    projectId: number;
+    cardRect: DOMRect;
+    targetColumn: KanbanStatus | null;
+  } | null>(null);
+  const [touchDragPos, setTouchDragPos] = useState<{ x: number; y: number } | null>(null);
+  const touchDragging = touchDragPos !== null;
+
 
   // Modal state
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -326,6 +335,63 @@ export default function KanbanPage() {
     }
   };
 
+  // Keep a ref to handleDrop that's always fresh — avoids stale closure in touch listeners
+  const handleDropRef = useRef(handleDrop);
+  useEffect(() => { handleDropRef.current = handleDrop; });
+
+  const handleTouchDragStart = useCallback((
+    projectId: number,
+    clientX: number,
+    clientY: number,
+    cardRect: DOMRect
+  ) => {
+    touchDragRef.current = { projectId, cardRect, targetColumn: null };
+    setDraggedId(projectId);
+    setTouchDragPos({ x: clientX, y: clientY });
+  }, []);
+
+  // Global touch move/end listeners — only active while a touch drag is in progress
+  useEffect(() => {
+    if (!touchDragging) return;
+
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault(); // block page scroll while dragging
+      const touch = e.touches[0];
+      setTouchDragPos({ x: touch.clientX, y: touch.clientY });
+
+      // Find which column the finger is over, skipping the floating clone
+      const hit = (document.elementsFromPoint(touch.clientX, touch.clientY) as HTMLElement[])
+        .find(el => !el.dataset.dragClone);
+      const colEl = hit?.closest('[data-column]') as HTMLElement | null;
+      const col = colEl?.dataset.column as KanbanStatus | undefined;
+      if (col) {
+        if (touchDragRef.current) touchDragRef.current.targetColumn = col;
+        setDragOver({ column: col, cardId: null, position: 'after' });
+      }
+    };
+
+    const onEnd = () => {
+      const ref = touchDragRef.current;
+      if (ref?.targetColumn) {
+        handleDropRef.current(ref.targetColumn, ref.projectId);
+      } else {
+        setDraggedId(null);
+        setDragOver(null);
+      }
+      touchDragRef.current = null;
+      setTouchDragPos(null);
+    };
+
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+    return () => {
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+  }, [touchDragging]);
+
   // ── Project CRUD ──
 
   const handleDelete = async (id: number) => {
@@ -600,6 +666,7 @@ export default function KanbanPage() {
               return (
                 <div
                   key={key}
+                  data-column={key}
                   className={`flex flex-col rounded-xl border-2 transition-all duration-200 ${isDropTarget
                     ? `${colors.dropzone} border-dashed scale-[1.01]`
                     : `${colors.bg} ${colors.border}`
@@ -663,6 +730,7 @@ export default function KanbanPage() {
                               onDragStart={() => handleDragStart(project.id)}
                               onDragEnd={handleDragEnd}
                               onDragOver={(e) => handleCardDragOver(e, project.id, key)}
+                              onTouchDragStart={handleTouchDragStart}
                               onClick={() => { if (!isDragging) setSelectedProject(project); }}
                               onDelete={() => handleDelete(project.id)}
                               onEdit={() => setEditingProject(project)}
@@ -706,6 +774,7 @@ export default function KanbanPage() {
             return (
               <div
                 key={key}
+                data-column={key}
                 className={`rounded-xl border-2 p-4 transition-all duration-200 ${isDropTarget
                   ? `${colors.dropzone} border-dashed scale-[1.005]`
                   : `${colors.bg} ${colors.border}`
@@ -778,6 +847,7 @@ export default function KanbanPage() {
                             onDragStart={() => handleDragStart(project.id)}
                             onDragEnd={handleDragEnd}
                             onDragOver={(e) => e.preventDefault()}
+                            onTouchDragStart={handleTouchDragStart}
                             onClick={() => { if (!isDragging) setSelectedProject(project); }}
                             onDelete={() => handleDelete(project.id)}
                             onEdit={() => setEditingProject(project)}
@@ -876,6 +946,31 @@ export default function KanbanPage() {
           </div>
         </div>
       )}
+
+      {/* Floating clone shown under the finger during touch drag */}
+      {touchDragPos && touchDragRef.current && (() => {
+        const p = projects.find(pr => pr.id === touchDragRef.current!.projectId);
+        if (!p) return null;
+        const { cardRect } = touchDragRef.current;
+        return (
+          <div
+            data-drag-clone="true"
+            className="fixed z-[200] pointer-events-none select-none rounded-lg border border-pink-400/60 bg-zinc-900/95 p-3 shadow-2xl shadow-pink-500/30"
+            style={{
+              left: touchDragPos.x - cardRect.width / 2,
+              top: touchDragPos.y - cardRect.height * 0.35,
+              width: cardRect.width,
+              transform: 'rotate(2deg) scale(1.04)',
+              opacity: 0.88,
+            }}
+          >
+            <p className="text-white font-semibold text-sm truncate">{p.name}</p>
+            {p.description && (
+              <p className="text-gray-400 text-xs mt-0.5 line-clamp-1">{p.description}</p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
