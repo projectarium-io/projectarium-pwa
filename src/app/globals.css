@@ -58,7 +58,7 @@ body {
   }
 }
 
-@container (min-width: 340px) {
+@container (min-width: 240px) {
   .card-extra-todos {
     display: block;
   }

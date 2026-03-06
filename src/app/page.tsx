@@ -457,7 +457,7 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className={getFontSizeClass('text-base') + (kbMode ? ' cursor-none' : '')}>
+    <div className={`flex flex-col h-full ` + getFontSizeClass('text-base') + (kbMode ? ' cursor-none' : '')}>
       {/* Keyboard mode indicator */}
       {kbMode && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-400/50 backdrop-blur-sm flex items-center gap-2 text-pink-300 text-xs font-mono tracking-wider select-none pointer-events-none">
@@ -590,7 +590,7 @@ export default function KanbanPage() {
       {viewMode === 'vertical' && (() => {
         const filteredCols = KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key] && (!focusedColumn || key === focusedColumn));
         return (
-          <div className={`grid gap-4 px-4 h-[calc(100vh-12rem)] min-h-0`} style={{ gridTemplateColumns: `repeat(${filteredCols.length}, minmax(0, 1fr))` }}>
+          <div className={`grid gap-4 px-4 flex-1 min-h-0`} style={{ gridTemplateColumns: `repeat(${filteredCols.length}, minmax(0, 1fr))` }}>
             {filteredCols.map(({ key, label }, colIdx) => {
               const colProjects = getColumnProjects(key);
               const colors = kanbanColors[key];
@@ -650,10 +650,11 @@ export default function KanbanPage() {
                           {isTarget && dragOver!.position === 'before' && (
                             <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
                           )}
-                          <div data-project-id={project.id}>
+                          <div data-project-id={project.id} className="card-container">
                             <ProjectCard
                               project={project}
                               todoCount={todos[project.id]?.length || 0}
+                              todos={todos[project.id] || []}
                               isDragging={isDragging}
                               isFocused={kbMode && getFocusedProject()?.id === project.id}
                               fontSizeLevel={fontSizeLevel}
@@ -694,7 +695,7 @@ export default function KanbanPage() {
 
       {/* Horizontal View - Project Rows */}
       {viewMode === 'horizontal' && (
-        <div className="px-4 overflow-y-auto h-[calc(100vh-12rem)] space-y-4">
+        <div className="px-4 overflow-y-auto flex-1 min-h-0 space-y-4">
           {KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key] && (!focusedColumn || key === focusedColumn)).map(({ key, label }, colIdx) => {
             const colProjects = getColumnProjects(key);
             const colors = kanbanColors[key];
@@ -755,7 +756,7 @@ export default function KanbanPage() {
                           <div className={`w-1 self-stretch ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
                         )}
                         <div
-                          className="w-[calc(50%-0.25rem)] sm:w-48 md:w-56 lg:w-64 flex-shrink-0"
+                          className="w-[calc(50%-0.25rem)] sm:w-48 md:w-56 lg:w-64 flex-shrink-0 card-container"
                           data-project-id={project.id}
                           onDragOver={(e) => {
                             e.preventDefault();
@@ -768,6 +769,7 @@ export default function KanbanPage() {
                           <ProjectCard
                             project={project}
                             todoCount={todos[project.id]?.length || 0}
+                            todos={todos[project.id] || []}
                             isDragging={isDragging}
                             isFocused={kbMode && getFocusedProject()?.id === project.id}
                             fontSizeLevel={fontSizeLevel}

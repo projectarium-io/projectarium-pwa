@@ -36,8 +36,8 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>
-          <div className="min-h-screen bg-black">
-            <main className="px-4 sm:px-6 py-6">
+          <div className="h-screen bg-black flex flex-col overflow-hidden">
+            <main className="flex flex-col flex-1 min-h-0 px-4 sm:px-6 pt-6">
               {children}
             </main>
           </div>

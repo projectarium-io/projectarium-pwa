@@ -1,10 +1,11 @@
-import { Project } from '@/types';
+import { Project, Todo } from '@/types';
 import { languageColors, defaultLanguageColor, dragColors, cardColors } from '@/lib/theme';
 import { useRef, useState } from 'react';
 
 interface ProjectCardProps {
   project: Project;
   todoCount: number;
+  todos?: Todo[];
   isDragging: boolean;
   isFocused?: boolean;
   onDragStart: () => void;
@@ -22,6 +23,7 @@ interface ProjectCardProps {
 export default function ProjectCard({
   project,
   todoCount,
+  todos = [],
   isDragging,
   isFocused = false,
   onDragStart,
@@ -37,6 +39,7 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
   const langClass = languageColors[langKey] || defaultLanguageColor;
+  const activeTodos = todos.filter(t => !t.deleted);
 
   const touchTimer = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -142,6 +145,20 @@ export default function ProjectCard({
         <p className={`${getFontSizeClass('text-xs')} text-gray-500 dark:text-gray-400 line-clamp-2 mb-2`}>
           {project.description}
         </p>
+      )}
+
+      {/* Inline todo preview — shown when card container is wide */}
+      {activeTodos.length > 0 && (
+        <div className="card-extra card-extra-todos mb-2 border-t border-white/5 pt-1.5 mt-0.5">
+          {activeTodos.slice(0, 3).map(todo => (
+            <p key={todo.id} className={`${getFontSizeClass('text-[10px]')} text-gray-500 dark:text-gray-500 truncate leading-relaxed`}>
+              <span className="text-gray-600 mr-1">○</span>{todo.description}
+            </p>
+          ))}
+          {activeTodos.length > 3 && (
+            <p className={`${getFontSizeClass('text-[10px]')} text-gray-600 dark:text-gray-600 italic`}>…{activeTodos.length - 3} more</p>
+          )}
+        </div>
       )}
 
       {/* Footer tags */}
