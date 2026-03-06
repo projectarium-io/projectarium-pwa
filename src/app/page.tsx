@@ -359,13 +359,30 @@ export default function KanbanPage() {
       const touch = e.touches[0];
       setTouchDragPos({ x: touch.clientX, y: touch.clientY });
 
-      // Find which column the finger is over, skipping the floating clone
-      const hit = (document.elementsFromPoint(touch.clientX, touch.clientY) as HTMLElement[])
-        .find(el => !el.dataset.dragClone);
-      const colEl = hit?.closest('[data-column]') as HTMLElement | null;
-      const col = colEl?.dataset.column as KanbanStatus | undefined;
-      if (col) {
-        if (touchDragRef.current) touchDragRef.current.targetColumn = col;
+      // All elements under the finger, excluding the floating clone
+      const elements = (document.elementsFromPoint(touch.clientX, touch.clientY) as HTMLElement[])
+        .filter(el => !el.closest('[data-drag-clone]'));
+
+      // Find target column
+      const colEl = elements.find(el => el.hasAttribute('data-column'))
+        ?? (elements.map(el => el.closest('[data-column]') as HTMLElement | null).find(Boolean) ?? null);
+      const col = colEl?.getAttribute('data-column') as KanbanStatus | undefined;
+      if (!col) return;
+
+      if (touchDragRef.current) touchDragRef.current.targetColumn = col;
+
+      // Find card wrapper under finger (skip the card being dragged)
+      const cardWrapper = (
+        elements.find(el => el.hasAttribute('data-project-id'))
+        ?? (elements.map(el => el.closest('[data-project-id]') as HTMLElement | null).find(Boolean) ?? null)
+      );
+      const cardId = cardWrapper ? parseInt(cardWrapper.getAttribute('data-project-id')!) : NaN;
+
+      if (!isNaN(cardId) && cardId !== touchDragRef.current?.projectId) {
+        const rect = cardWrapper!.getBoundingClientRect();
+        const position: 'before' | 'after' = touch.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+        setDragOver({ column: col, cardId, position });
+      } else {
         setDragOver({ column: col, cardId: null, position: 'after' });
       }
     };

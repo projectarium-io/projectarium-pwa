@@ -36,7 +36,7 @@ export default function ProjectCard({
   onEdit,
   fontSizeLevel,
   getFontSizeClass,
-  touchDragDelay = 100, // Default 200ms delay for mobile
+  touchDragDelay = 700, // 700ms hold to drag on non-handle touch
   animationDelay,
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
@@ -47,8 +47,10 @@ export default function ProjectCard({
   const touchTimer = useRef<NodeJS.Timeout | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
+  const [isHolding, setIsHolding] = useState(false);
 
   const startTouchDrag = (clientX: number, clientY: number) => {
+    setIsHolding(false);
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       if (navigator.vibrate) navigator.vibrate(40);
@@ -66,14 +68,16 @@ export default function ProjectCard({
       return;
     }
 
+    // Non-handle: show hold animation, then start drag after delay
     if (touchTimer.current) clearTimeout(touchTimer.current);
+    setIsHolding(true);
     touchTimer.current = setTimeout(() => {
       touchTimer.current = null;
       startTouchDrag(touch.clientX, touch.clientY);
     }, touchDragDelay);
   };
 
-  // Cancel timer if user scrolls before it fires
+  // Cancel timer and animation if user scrolls before it fires
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchTimer.current || !touchStartPos.current) return;
     const touch = e.touches[0];
@@ -83,6 +87,7 @@ export default function ProjectCard({
       clearTimeout(touchTimer.current);
       touchTimer.current = null;
       touchStartPos.current = null;
+      setIsHolding(false);
     }
   };
 
@@ -92,6 +97,7 @@ export default function ProjectCard({
       touchTimer.current = null;
     }
     touchStartPos.current = null;
+    setIsHolding(false);
   };
 
   return (
@@ -133,8 +139,11 @@ export default function ProjectCard({
         transition-all duration-150 select-none
         ${isDragging ? dragColors.draggingCard : ''}
         ${isFocused ? 'ring-2 ring-pink-400 border-pink-400' : ''}
-        ${animationDelay !== undefined ? 'animate-card-in' : ''}`}
-      style={animationDelay !== undefined ? { animationDelay: `${animationDelay}ms` } : undefined}
+        ${isHolding ? 'animate-card-hold' : animationDelay !== undefined ? 'animate-card-in' : ''}`}
+      style={{
+        ...(isHolding ? { animationDuration: `${touchDragDelay}ms` } : {}),
+        ...(animationDelay !== undefined && !isHolding ? { animationDelay: `${animationDelay}ms` } : {}),
+      }}
     >
       {/* Drag handle — touch to drag immediately without delay */}
       <div
