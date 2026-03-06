@@ -49,18 +49,36 @@ export default function KanbanPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  // View mode: 'vertical' (kanban columns) or 'horizontal' (project rows)
-  const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
+  // View mode: 'vertical' (kanban columns) or 'horizontal' (project rows) (persisted to localStorage)
+  const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>(() => {
+    try {
+      const saved = localStorage.getItem('kanban-view-mode');
+      if (saved === 'vertical' || saved === 'horizontal') return saved;
+    } catch { /* ignore */ }
+    return 'vertical';
+  });
 
-  // Column visibility state
+  // Column visibility state (persisted to localStorage)
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    KANBAN_COLUMNS.forEach(({ key }) => { initial[key] = true; });
-    return initial;
+    const defaults: Record<string, boolean> = {};
+    KANBAN_COLUMNS.forEach(({ key }) => { defaults[key] = true; });
+    try {
+      const saved = localStorage.getItem('kanban-visible-columns');
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>;
+        // Merge with defaults so newly added columns default to visible
+        return { ...defaults, ...parsed };
+      }
+    } catch { /* ignore */ }
+    return defaults;
   });
 
   const toggleColumn = (key: string) => {
-    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleColumns(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem('kanban-visible-columns', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
   };
 
   const loadData = async () => {
@@ -298,7 +316,11 @@ export default function KanbanPage() {
         <div className="flex-1 flex items-center">
           {/* View Mode Toggle Button */}
           <button
-            onClick={() => setViewMode(prev => prev === 'vertical' ? 'horizontal' : 'vertical')}
+            onClick={() => setViewMode(prev => {
+              const next = prev === 'vertical' ? 'horizontal' : 'vertical';
+              try { localStorage.setItem('kanban-view-mode', next); } catch { /* ignore */ }
+              return next;
+            })}
             title={viewMode === 'vertical' ? 'Switch to horizontal view' : 'Switch to vertical view'}
             className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-all duration-150 focus:outline-none mr-3 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
