@@ -6,6 +6,7 @@ interface ProjectCardProps {
   project: Project;
   todoCount: number;
   isDragging: boolean;
+  isFocused?: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -21,6 +22,7 @@ export default function ProjectCard({
   project,
   todoCount,
   isDragging,
+  isFocused = false,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -121,7 +123,8 @@ export default function ProjectCard({
         hover:-translate-y-0.5
         transition-all duration-150 select-none
         ${isDragging ? dragColors.draggingCard : ''}
-        ${isDragReady ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}`}
+        ${isDragReady ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}
+        ${isFocused ? 'ring-2 ring-pink-400 border-pink-400' : ''}`}
     >
       {/* Card header */}
       <div className="mb-1.5">

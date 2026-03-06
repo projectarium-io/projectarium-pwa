@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { Project, Todo, KANBAN_COLUMNS, KanbanStatus, normalizeStatus } from '@/types';
 import { kanbanColors, dragColors, pageColors, buttonColors, modalColors } from '@/lib/theme';
 import {
@@ -48,6 +48,12 @@ export default function KanbanPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  // ── Keyboard navigation mode ──
+  const [kbMode, setKbMode] = useState(false);
+  const [focusCol, setFocusCol] = useState(0);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const boardRef = useRef<HTMLDivElement>(null);
 
   // View mode: 'vertical' (kanban columns) or 'horizontal' (project rows) (persisted to localStorage)
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>(() => {
@@ -112,17 +118,122 @@ export default function KanbanPage() {
     loadData();
   }, []);
 
-  // Close modals on Escape
+  // Helper to get visible columns list
+  const getVisibleCols = useCallback(() => {
+    return KANBAN_COLUMNS.filter(({ key }) => visibleColumns[key]);
+  }, [visibleColumns]);
+
+  // Helper to get the focused project
+  const getFocusedProject = useCallback(() => {
+    const visCols = getVisibleCols();
+    if (visCols.length === 0) return null;
+    const col = visCols[Math.min(focusCol, visCols.length - 1)];
+    const colProjects = projects
+      .filter(p => normalizeStatus(p.status) === col.key)
+      .sort((a, b) => a.position - b.position);
+    if (colProjects.length === 0) return null;
+    return colProjects[Math.min(focusIdx, colProjects.length - 1)] || null;
+  }, [getVisibleCols, focusCol, focusIdx, projects]);
+
+  // Keyboard navigation + Escape handler
   useEffect(() => {
+    const hasModal = !!(editingProject || showCreateModal || selectedProject);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (editingProject) setEditingProject(null);
-      else if (showCreateModal) setShowCreateModal(false);
-      else if (selectedProject) setSelectedProject(null);
+      // Always handle Escape regardless of mode
+      if (e.key === 'Escape') {
+        if (editingProject) { setEditingProject(null); return; }
+        if (showCreateModal) { setShowCreateModal(false); return; }
+        if (selectedProject) { setSelectedProject(null); return; }
+        if (kbMode) { setKbMode(false); return; }
+        return;
+      }
+
+      // Tab toggles keyboard mode (only when no modal is open)
+      if (e.key === 'Tab' && !hasModal) {
+        e.preventDefault();
+        setKbMode(prev => !prev);
+        return;
+      }
+
+      // All other keys only work in kb mode and when no modal is open
+      if (!kbMode || hasModal) return;
+
+      const visCols = getVisibleCols();
+      if (visCols.length === 0) return;
+
+      const clampedCol = Math.min(focusCol, visCols.length - 1);
+      const col = visCols[clampedCol];
+      const colProjects = projects
+        .filter(p => normalizeStatus(p.status) === col.key)
+        .sort((a, b) => a.position - b.position);
+
+      switch (e.key) {
+        case 'ArrowRight': {
+          e.preventDefault();
+          const newCol = Math.min(clampedCol + 1, visCols.length - 1);
+          setFocusCol(newCol);
+          setFocusIdx(0);
+          break;
+        }
+        case 'ArrowLeft': {
+          e.preventDefault();
+          const newCol = Math.max(clampedCol - 1, 0);
+          setFocusCol(newCol);
+          setFocusIdx(0);
+          break;
+        }
+        case 'ArrowDown': {
+          e.preventDefault();
+          setFocusIdx(prev => Math.min(prev + 1, colProjects.length - 1));
+          break;
+        }
+        case 'ArrowUp': {
+          e.preventDefault();
+          setFocusIdx(prev => Math.max(prev - 1, 0));
+          break;
+        }
+        case 'Enter':
+        case ' ': {
+          e.preventDefault();
+          const fp = colProjects[Math.min(focusIdx, colProjects.length - 1)];
+          if (fp) setSelectedProject(fp);
+          break;
+        }
+        case 'e':
+        case 'E': {
+          e.preventDefault();
+          const fp = colProjects[Math.min(focusIdx, colProjects.length - 1)];
+          if (fp) setEditingProject(fp);
+          break;
+        }
+        case 'd':
+        case 'D': {
+          e.preventDefault();
+          const fp = colProjects[Math.min(focusIdx, colProjects.length - 1)];
+          if (fp) handleDelete(fp.id);
+          break;
+        }
+        case 'n':
+        case 'N': {
+          e.preventDefault();
+          setShowCreateModal(true);
+          break;
+        }
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [editingProject, showCreateModal, selectedProject]);
+  }, [kbMode, focusCol, focusIdx, editingProject, showCreateModal, selectedProject, projects, getVisibleCols]);
+
+  // Auto-scroll focused card into view
+  useEffect(() => {
+    if (!kbMode) return;
+    const fp = getFocusedProject();
+    if (!fp) return;
+    const el = document.querySelector(`[data-project-id="${fp.id}"]`);
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [kbMode, focusCol, focusIdx, getFocusedProject]);
 
   // ── Drag and Drop ──
 
@@ -322,7 +433,17 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className={getFontSizeClass('text-base')}>
+    <div className={getFontSizeClass('text-base') + (kbMode ? ' cursor-none' : '')}>
+      {/* Keyboard mode indicator */}
+      {kbMode && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-400/50 backdrop-blur-sm flex items-center gap-2 text-pink-300 text-xs font-mono tracking-wider select-none pointer-events-none">
+          <span>⌨ KB MODE</span>
+          <span className="text-gray-500">│</span>
+          <span className="text-gray-400">← → ↑ ↓ navigate</span>
+          <span className="text-gray-500">│</span>
+          <span className="text-gray-400">↵ open · E edit · D del · N new · Tab exit</span>
+        </div>
+      )}
       {/* Header */}
       <div className="flex mb-6 px-4 items-center">
         <div className="flex-1 flex items-center">
@@ -479,19 +600,22 @@ export default function KanbanPage() {
                         {isTarget && dragOver!.position === 'before' && (
                           <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
                         )}
-                        <ProjectCard
-                          project={project}
-                          todoCount={todos[project.id]?.length || 0}
-                          isDragging={isDragging}
-                          fontSizeLevel={fontSizeLevel}
-                          getFontSizeClass={getFontSizeClass}
-                          onDragStart={() => handleDragStart(project.id)}
-                          onDragEnd={handleDragEnd}
-                          onDragOver={(e) => handleCardDragOver(e, project.id, key)}
-                          onClick={() => { if (!isDragging) setSelectedProject(project); }}
-                          onDelete={() => handleDelete(project.id)}
-                          onEdit={() => setEditingProject(project)}
-                        />
+                        <div data-project-id={project.id}>
+                          <ProjectCard
+                            project={project}
+                            todoCount={todos[project.id]?.length || 0}
+                            isDragging={isDragging}
+                            isFocused={kbMode && getFocusedProject()?.id === project.id}
+                            fontSizeLevel={fontSizeLevel}
+                            getFontSizeClass={getFontSizeClass}
+                            onDragStart={() => handleDragStart(project.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleCardDragOver(e, project.id, key)}
+                            onClick={() => { if (!isDragging) setSelectedProject(project); }}
+                            onDelete={() => handleDelete(project.id)}
+                            onEdit={() => setEditingProject(project)}
+                          />
+                        </div>
                         {isTarget && dragOver!.position === 'after' && (
                           <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
                         )}
@@ -571,6 +695,7 @@ export default function KanbanPage() {
                         )}
                         <div
                           className="w-[calc(50%-0.25rem)] sm:w-48 md:w-56 lg:w-64 flex-shrink-0"
+                          data-project-id={project.id}
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -583,6 +708,7 @@ export default function KanbanPage() {
                             project={project}
                             todoCount={todos[project.id]?.length || 0}
                             isDragging={isDragging}
+                            isFocused={kbMode && getFocusedProject()?.id === project.id}
                             fontSizeLevel={fontSizeLevel}
                             getFontSizeClass={getFontSizeClass}
                             onDragStart={() => handleDragStart(project.id)}
