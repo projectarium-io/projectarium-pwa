@@ -2,7 +2,7 @@ export interface Project {
   id: number;
   name: string;
   description: string;
-  path: string;
+  path: string | null;
   file: string;
   priority: number;
   status: string;
@@ -14,7 +14,7 @@ export interface Todo {
   id: number;
   description: string;
   priority: number;
-  deleted: boolean;
+  checked: boolean;
   project_id: number | null;
 }
 

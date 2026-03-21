@@ -41,7 +41,7 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const langKey = project.language?.toLowerCase().split(',')[0]?.trim() || '';
   const langClass = languageColors[langKey] || defaultLanguageColor;
-  const activeTodos = todos.filter(t => !t.deleted);
+  const activeTodos = todos.filter(t => !t.checked);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const touchTimer = useRef<NodeJS.Timeout | null>(null);
@@ -172,14 +172,14 @@ export default function ProjectCard({
 
       {/* Description */}
       {project.description && (
-        <p className={`${getFontSizeClass('text-xs')} text-gray-500 dark:text-gray-400 line-clamp-2 mb-2`}>
+        <p className={`${getFontSizeClass('text-xs')} text-gray-500 dark:text-gray-400 line-clamp-2 mb-1`}>
           {project.description}
         </p>
       )}
 
       {/* Inline todo preview — shown when card container is wide */}
       {activeTodos.length > 0 && (
-        <div className="card-extra card-extra-todos mb-2 border-t border-white/5 pt-1.5 mt-0.5">
+        <div className="card-extra card-extra-todos mb-2 border-t border-white/5 pt-1">
           {activeTodos.slice(0, 3).map(todo => (
             <p key={todo.id} className={`${getFontSizeClass('text-[10px]')} text-gray-500 dark:text-gray-500 truncate leading-relaxed`}>
               <span className="text-gray-600 mr-1">○</span>{todo.description}

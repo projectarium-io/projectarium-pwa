@@ -74,6 +74,11 @@ export default function KanbanPage() {
     setFocusedColumn(prev => prev === key ? null : key);
   };
 
+  // ── Quick-add project inline in column ──
+  const [quickAddColumn, setQuickAddColumn] = useState<KanbanStatus | null>(null);
+  const [quickAddName, setQuickAddName] = useState('');
+  const quickAddRef = useRef<HTMLInputElement>(null);
+
   // View mode: 'vertical' (kanban columns) or 'horizontal' (project rows) (persisted to localStorage)
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>(() => {
     try {
@@ -439,6 +444,25 @@ export default function KanbanPage() {
     }
   };
 
+  const handleQuickCreate = async (column: KanbanStatus) => {
+    const name = quickAddName.trim();
+    if (!name) {
+      setQuickAddColumn(null);
+      setQuickAddName('');
+      return;
+    }
+    try {
+      const created = await createProject({ name, status: column });
+      setProjects((prev) => [...prev, created]);
+      setTodos((prev) => ({ ...prev, [created.id]: [] }));
+      success(`Created "${created.name}"`);
+    } catch (err) {
+      toastError('Failed to create project: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    }
+    setQuickAddColumn(null);
+    setQuickAddName('');
+  };
+
   const handleUpdate = async (data: Partial<Project>) => {
     if (!editingProject) return;
     try {
@@ -479,7 +503,7 @@ export default function KanbanPage() {
     try {
       const updated = await updateTodo(todo.id, {
         ...todo,
-        deleted: !todo.deleted,
+        checked: !todo.checked,
       });
       setTodos((prev) => ({
         ...prev,
@@ -770,6 +794,33 @@ export default function KanbanPage() {
                     {isDropTarget && dragOver?.cardId === null && colProjects.length > 0 && (
                       <div className={`h-0.5 ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
                     )}
+
+                    {/* Quick-add project button */}
+                    {quickAddColumn === key ? (
+                      <input
+                        ref={quickAddRef}
+                        type="text"
+                        autoFocus
+                        placeholder="Project name…"
+                        value={quickAddName}
+                        onChange={(e) => setQuickAddName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleQuickCreate(key);
+                          if (e.key === 'Escape') { setQuickAddColumn(null); setQuickAddName(''); }
+                        }}
+                        onBlur={() => { setQuickAddColumn(null); setQuickAddName(''); }}
+                        className={`w-full px-3 py-2 rounded-lg border-2 border-dashed ${colors.addButtonBorder} ${colors.addButton} ${colors.addButtonText} bg-transparent text-sm placeholder-current/50 outline-none focus:border-opacity-80 transition-colors`}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => { setQuickAddColumn(key); setQuickAddName(''); }}
+                        className={`w-full flex items-center justify-center py-2 rounded-lg border-2 border-dashed ${colors.addButtonBorder} ${colors.addButton} ${colors.addButtonText} ${colors.addButtonHover} transition-all duration-150 cursor-pointer`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -886,6 +937,35 @@ export default function KanbanPage() {
                   {/* End-of-row drop indicator */}
                   {isDropTarget && dragOver?.cardId === null && colProjects.length > 0 && (
                     <div className={`w-1 self-stretch ${dragColors.dropIndicator} rounded-full shadow-sm shadow-blue-400`} />
+                  )}
+
+                  {/* Quick-add project button */}
+                  {quickAddColumn === key ? (
+                    <div className="w-[calc(50%-0.25rem)] sm:w-48 md:w-56 lg:w-64 flex-shrink-0">
+                      <input
+                        ref={quickAddRef}
+                        type="text"
+                        autoFocus
+                        placeholder="Project name…"
+                        value={quickAddName}
+                        onChange={(e) => setQuickAddName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleQuickCreate(key);
+                          if (e.key === 'Escape') { setQuickAddColumn(null); setQuickAddName(''); }
+                        }}
+                        onBlur={() => { setQuickAddColumn(null); setQuickAddName(''); }}
+                        className={`w-full px-3 py-2 rounded-lg border-2 border-dashed ${colors.addButtonBorder} ${colors.addButton} ${colors.addButtonText} bg-transparent text-sm placeholder-current/50 outline-none focus:border-opacity-80 transition-colors`}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setQuickAddColumn(key); setQuickAddName(''); }}
+                      className={`w-[calc(50%-0.25rem)] sm:w-48 md:w-56 lg:w-64 flex-shrink-0 flex items-center justify-center py-2 rounded-lg border-2 border-dashed ${colors.addButtonBorder} ${colors.addButton} ${colors.addButtonText} ${colors.addButtonHover} transition-all duration-150 cursor-pointer`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
                   )}
                 </div>
               </div>

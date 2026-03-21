@@ -7,6 +7,10 @@ export const kanbanColors: Record<KanbanStatus, {
     header: string;
     count: string;
     dropzone: string;
+    addButton: string;
+    addButtonBorder: string;
+    addButtonText: string;
+    addButtonHover: string;
 }> = {
     abandoned: {
         bg: 'bg-black',
@@ -14,6 +18,10 @@ export const kanbanColors: Record<KanbanStatus, {
         header: 'text-red-400',
         count: 'bg-red-900 text-red-300',
         dropzone: 'bg-red-900/30 border-red-600',
+        addButton: 'bg-red-950/40',
+        addButtonBorder: 'border-red-700/50',
+        addButtonText: 'text-red-500',
+        addButtonHover: 'hover:bg-red-900/40 hover:border-red-600/60',
     },
     backlog: {
         bg: 'bg-black',
@@ -21,6 +29,10 @@ export const kanbanColors: Record<KanbanStatus, {
         header: 'text-amber-400',
         count: 'bg-amber-900 text-amber-300',
         dropzone: 'bg-amber-900/30 border-amber-600',
+        addButton: 'bg-amber-950/40',
+        addButtonBorder: 'border-amber-700/50',
+        addButtonText: 'text-amber-500',
+        addButtonHover: 'hover:bg-amber-900/40 hover:border-amber-600/60',
     },
     active: {
         bg: 'bg-black',
@@ -28,6 +40,10 @@ export const kanbanColors: Record<KanbanStatus, {
         header: 'text-blue-400',
         count: 'bg-blue-900 text-blue-300',
         dropzone: 'bg-blue-900/30 border-blue-600',
+        addButton: 'bg-blue-950/40',
+        addButtonBorder: 'border-blue-700/50',
+        addButtonText: 'text-blue-500',
+        addButtonHover: 'hover:bg-blue-900/40 hover:border-blue-600/60',
     },
     completed: {
         bg: 'bg-black',
@@ -35,6 +51,10 @@ export const kanbanColors: Record<KanbanStatus, {
         header: 'text-emerald-400',
         count: 'bg-emerald-900 text-emerald-300',
         dropzone: 'bg-emerald-900/30 border-emerald-600',
+        addButton: 'bg-emerald-950/40',
+        addButtonBorder: 'border-emerald-700/50',
+        addButtonText: 'text-emerald-500',
+        addButtonHover: 'hover:bg-emerald-900/40 hover:border-emerald-600/60',
     },
 };
 

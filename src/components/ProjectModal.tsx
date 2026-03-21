@@ -43,7 +43,7 @@ export default function ProjectModal({
         }
     };
 
-    const activeTodos = todos.filter((t) => !t.deleted);
+    const activeTodos = todos.filter((t) => !t.checked);
 
     return (
         <div

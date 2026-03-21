@@ -110,7 +110,7 @@ export async function createTodo(data: {
 }): Promise<Todo> {
   return fetchApi<Todo>('/todos', {
     method: 'POST',
-    body: JSON.stringify({ ...data, deleted: false }),
+    body: JSON.stringify({ ...data, checked: false }),
   });
 }
 
