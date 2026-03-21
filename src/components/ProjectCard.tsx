@@ -204,12 +204,6 @@ export default function ProjectCard({
             P{project.priority}
           </span>
         )}
-
-        {todoCount > 0 && (
-          <span className={`${getFontSizeClass('text-[10px]')} font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300`}>
-            {todoCount} todo{todoCount !== 1 ? 's' : ''}
-          </span>
-        )}
       </div>
     </div>
   );
